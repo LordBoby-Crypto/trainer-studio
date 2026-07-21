@@ -43,7 +43,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         NextScanCommand = new AsyncRelayCommand(NextScanAsync,
             () => scanner is not null && scanSession is not null && !IsBusy, SetError);
         CancelCommand = new RelayCommand(() => scanCancellation?.Cancel(), () => IsBusy);
-        WriteValueCommand = new RelayCommand(WriteValue,
+        WriteValueCommand = new RelayCommand(WriteSelectedValue,
             () => memory is not null && SelectedCandidate is not null && !IsBusy);
         AddDiscoveryCommand = new RelayCommand(AddDiscovery,
             () => SelectedCandidate is not null && !string.IsNullOrWhiteSpace(DiscoveryName));
@@ -354,7 +354,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void WriteValue()
+    private void WriteSelectedValue()
     {
         if (memory is null || SelectedCandidate is null || scanSession is null)
         {
