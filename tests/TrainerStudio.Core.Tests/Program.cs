@@ -8,7 +8,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Float32 codec round-trip", () => RunSync(Float32CodecRoundTrip)),
     ("Exact offset search", () => RunSync(ExactOffsetSearch)),
     ("Comparative matching", () => RunSync(ComparativeMatching)),
-    ("Project JSON round-trip", ProjectRoundTripAsync)
+    ("Project JSON round-trip", ProjectRoundTripAsync),
+    ("Project atomic overwrite", ProjectAtomicOverwriteAsync),
+    ("Legacy project migration", LegacyProjectMigrationAsync),
+    ("Module-relative address math", () => RunSync(ModuleRelativeAddressMath)),
+    ("Session reliability", () => RunSync(SessionReliability)),
+    ("Restart and update reliability", () => RunSync(RestartAndUpdateReliability))
 };
 
 var failures = new List<string>();
@@ -89,6 +94,10 @@ static async Task ProjectRoundTripAsync()
         Assert(loaded.Name == project.Name, "Project name changed.");
         Assert(loaded.Discoveries.Single().LastKnownAddress == 0x1234,
             "Discovery address changed.");
+        Assert(loaded.FormatVersion == TrainerProject.CurrentFormatVersion,
+            "Project format was not current after load.");
+        Assert(loaded.ProjectId != Guid.Empty, "Project ID was not persisted.");
+        Assert(loaded.Discoveries.Single().Id != Guid.Empty, "Discovery ID was not persisted.");
     }
     finally
     {
@@ -98,6 +107,129 @@ static async Task ProjectRoundTripAsync()
         }
     }
 }
+
+static async Task ProjectAtomicOverwriteAsync()
+{
+    var directory = Path.Combine(Path.GetTempPath(), $"trainer-studio-{Guid.NewGuid():N}");
+    var path = Path.Combine(directory, "overwrite.trainerstudio.json");
+    try
+    {
+        var project = new TrainerProject { Name = "First" };
+        await ProjectStore.SaveAsync(project, path);
+        project.Name = "Second";
+        await ProjectStore.SaveAsync(project, path);
+
+        var loaded = await ProjectStore.LoadAsync(path);
+        Assert(loaded.Name == "Second", "Atomic overwrite retained the old project.");
+        Assert(Directory.GetFiles(directory, "*.tmp").Length == 0,
+            "Atomic save left a temporary file behind.");
+    }
+    finally
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+}
+
+static async Task LegacyProjectMigrationAsync()
+{
+    var path = Path.Combine(Path.GetTempPath(), $"trainer-studio-{Guid.NewGuid():N}.json");
+    try
+    {
+        const string json = """
+            {
+              "formatVersion": 1,
+              "name": "Legacy Trainer",
+              "executableName": "LegacyGame.exe",
+              "discoveries": [
+                {
+                  "name": "Health",
+                  "lastKnownAddress": 4096,
+                  "valueType": "Int32",
+                  "lastKnownValue": "100"
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(path, json);
+        var loaded = await ProjectStore.LoadAsync(path);
+        Assert(loaded.FormatVersion == TrainerProject.CurrentFormatVersion,
+            "Legacy project was not migrated.");
+        Assert(loaded.ProjectId != Guid.Empty, "Legacy project did not receive an ID.");
+        Assert(loaded.Discoveries.Single().Id != Guid.Empty,
+            "Legacy discovery did not receive an ID.");
+        Assert(loaded.Discoveries.Single().Validations.Count == 0,
+            "Migration invented validation evidence.");
+    }
+    finally
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+}
+
+static void SessionReliability()
+{
+    var session = Guid.NewGuid();
+    var discovery = NewDiscovery();
+    discovery.Validations.Add(NewValidation(session, "game-v1", automatic: false));
+    Assert(DiscoveryReliabilityEvaluator.Evaluate(discovery)
+        == DiscoveryReliability.Experimental, "One confirmation must remain experimental.");
+
+    discovery.Validations.Add(NewValidation(session, "game-v1", automatic: true));
+    Assert(DiscoveryReliabilityEvaluator.Evaluate(discovery)
+        == DiscoveryReliability.SessionStable, "Repeated same-session confirmation was missed.");
+}
+
+static void ModuleRelativeAddressMath()
+{
+    Assert(ModuleAddressMath.TryGetOffset(0x1000, 0x500, 0x1234, out var offset),
+        "Address inside the module was rejected.");
+    Assert(offset == 0x234, "The module offset was calculated incorrectly.");
+    Assert(ModuleAddressMath.TryResolve(0x7000, 0x500, offset, out var resolved),
+        "Valid module offset did not resolve.");
+    Assert(resolved == 0x7234, "The relocated module address was incorrect.");
+    Assert(!ModuleAddressMath.TryGetOffset(0x1000, 0x500, 0x1500, out _),
+        "The first address beyond the module was accepted.");
+    Assert(!ModuleAddressMath.TryResolve(ulong.MaxValue - 2, 10, 5, out _),
+        "Overflowing module address was accepted.");
+}
+
+static void RestartAndUpdateReliability()
+{
+    var discovery = NewDiscovery();
+    discovery.Validations.Add(NewValidation(Guid.NewGuid(), "game-v1", automatic: true));
+    discovery.Validations.Add(NewValidation(Guid.NewGuid(), "game-v1", automatic: true));
+    Assert(DiscoveryReliabilityEvaluator.Evaluate(discovery)
+        == DiscoveryReliability.RestartStable, "Two automatic sessions must be restart-stable.");
+
+    discovery.Validations.Add(NewValidation(Guid.NewGuid(), "game-v2", automatic: true));
+    Assert(DiscoveryReliabilityEvaluator.Evaluate(discovery)
+        == DiscoveryReliability.UpdateStable,
+        "Three automatic sessions across two executable identities must be update-stable.");
+}
+
+static SavedDiscovery NewDiscovery() => new()
+{
+    Name = "Health",
+    ValueType = ScanValueType.Int32,
+    LastKnownValue = "100"
+};
+
+static DiscoveryValidation NewValidation(Guid session, string executableIdentity, bool automatic)
+    => new()
+    {
+        AttachmentSessionId = session,
+        ExecutableIdentity = executableIdentity,
+        ObservedAddress = 0x1234,
+        ObservedValue = "100",
+        Confirmed = true,
+        AddressResolvedAutomatically = automatic
+    };
 
 static void Assert(bool condition, string message)
 {

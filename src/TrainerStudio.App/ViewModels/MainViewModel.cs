@@ -19,12 +19,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? scanCancellation;
     private ProcessDescriptor? selectedProcess;
     private CandidateViewModel? selectedCandidate;
+    private DiscoveryViewModel? selectedDiscovery;
+    private Guid attachmentSessionId;
     private ScanValueType selectedValueType = ScanValueType.Int32;
     private ComparisonMode selectedComparison = ComparisonMode.Exact;
     private string processFilter = string.Empty;
     private string searchValue = "2500";
     private string writeValue = string.Empty;
     private string discoveryName = "Credits";
+    private string discoveryNotes = string.Empty;
     private string status = "Choose a process to begin.";
     private string attachedProcess = "No process attached";
     private bool isBusy;
@@ -44,6 +47,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             () => memory is not null && SelectedCandidate is not null && !IsBusy);
         AddDiscoveryCommand = new RelayCommand(AddDiscovery,
             () => SelectedCandidate is not null && !string.IsNullOrWhiteSpace(DiscoveryName));
+        ValidateDiscoveryCommand = new RelayCommand(ValidateDiscovery,
+            () => SelectedDiscovery is not null && SelectedCandidate is not null
+                && scanSession is not null && SelectedProcess is not null && !IsBusy);
+        UpdateDiscoveryCommand = new RelayCommand(UpdateDiscovery,
+            () => SelectedDiscovery is not null && !string.IsNullOrWhiteSpace(DiscoveryName)
+                && !IsBusy);
         SaveProjectCommand = new AsyncRelayCommand(SaveProjectAsync, () => !IsBusy, SetError);
         OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync, () => !IsBusy, SetError);
         NewProjectCommand = new RelayCommand(NewProject, () => !IsBusy);
@@ -54,6 +63,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public Array ComparisonModes { get; } = Enum.GetValues(typeof(ComparisonMode));
     public ObservableCollection<ProcessDescriptor> Processes { get; } = [];
     public ObservableCollection<CandidateViewModel> Candidates { get; } = [];
+    public ObservableCollection<DiscoveryViewModel> Discoveries { get; } = [];
 
     public RelayCommand RefreshProcessesCommand { get; }
     public RelayCommand AttachCommand { get; }
@@ -62,6 +72,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand CancelCommand { get; }
     public RelayCommand WriteValueCommand { get; }
     public RelayCommand AddDiscoveryCommand { get; }
+    public RelayCommand ValidateDiscoveryCommand { get; }
+    public RelayCommand UpdateDiscoveryCommand { get; }
     public AsyncRelayCommand SaveProjectCommand { get; }
     public AsyncRelayCommand OpenProjectCommand { get; }
     public RelayCommand NewProjectCommand { get; }
@@ -86,6 +98,24 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref selectedCandidate, value))
             {
                 WriteValue = value?.CurrentValue ?? string.Empty;
+                RaiseCommandStates();
+            }
+        }
+    }
+
+    public DiscoveryViewModel? SelectedDiscovery
+    {
+        get => selectedDiscovery;
+        set
+        {
+            if (SetProperty(ref selectedDiscovery, value))
+            {
+                if (value is not null)
+                {
+                    DiscoveryName = value.Discovery.Name;
+                    DiscoveryNotes = value.Discovery.Notes;
+                }
+
                 RaiseCommandStates();
             }
         }
@@ -128,6 +158,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 RaiseCommandStates();
             }
         }
+    }
+
+    public string DiscoveryNotes
+    {
+        get => discoveryNotes;
+        set => SetProperty(ref discoveryNotes, value);
     }
 
     public string Status { get => status; private set => SetProperty(ref status, value); }
@@ -202,7 +238,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             AttachedProcess = "No process attached";
             memory = ProcessMemorySession.Attach(SelectedProcess);
             scanner = new ComparativeScanner(memory);
-            project.ExecutableName = SelectedProcess.FilePath ?? SelectedProcess.Name;
+            attachmentSessionId = Guid.NewGuid();
+            project.ExecutableName = Path.GetFileName(SelectedProcess.FilePath)
+                ?? SelectedProcess.Name;
             AttachedProcess = SelectedProcess.DisplayName;
             Status = "Attached. Choose a value type and run the first exact scan.";
             OnPropertyChanged(nameof(HasScan));
@@ -352,15 +390,132 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        project.Discoveries.Add(new SavedDiscovery
+        var discovery = new SavedDiscovery
         {
             Name = DiscoveryName.Trim(),
+            Notes = DiscoveryNotes.Trim(),
             LastKnownAddress = SelectedCandidate.Candidate.Address,
             LastKnownValue = SelectedCandidate.CurrentValue,
             ValueType = scanSession.ValueType
-        });
+        };
+        SetBestAddressResolution(discovery, SelectedCandidate.Candidate.Address);
+        discovery.Validations.Add(CreateValidation(SelectedCandidate, confirmed: true,
+            addressResolvedAutomatically: false));
+        DiscoveryReliabilityEvaluator.Refresh(discovery);
+        project.Discoveries.Add(discovery);
+        PopulateDiscoveries(discovery.Id);
         OnPropertyChanged(nameof(DiscoveryCount));
         Status = $"Saved {DiscoveryName.Trim()} to the current project.";
+    }
+
+    private void ValidateDiscovery()
+    {
+        if (SelectedDiscovery is null || SelectedCandidate is null || scanSession is null
+            || SelectedProcess is null)
+        {
+            return;
+        }
+
+        var discovery = SelectedDiscovery.Discovery;
+        if (discovery.ValueType != scanSession.ValueType)
+        {
+            Status = $"{discovery.Name} uses {discovery.ValueType}; the active scan uses {scanSession.ValueType}.";
+            return;
+        }
+
+        var selectedAddress = SelectedCandidate.Candidate.Address;
+        var resolvedAutomatically = TryResolveAddress(discovery, out var resolvedAddress)
+            && resolvedAddress == selectedAddress;
+        discovery.Validations.Add(CreateValidation(SelectedCandidate, confirmed: true,
+            resolvedAutomatically));
+        discovery.LastKnownAddress = selectedAddress;
+        discovery.LastKnownValue = SelectedCandidate.CurrentValue;
+
+        if (!resolvedAutomatically)
+        {
+            SetBestAddressResolution(discovery, selectedAddress);
+        }
+
+        DiscoveryReliabilityEvaluator.Refresh(discovery);
+        PopulateDiscoveries(discovery.Id);
+        Status = resolvedAutomatically
+            ? $"Confirmed {discovery.Name}; its saved address resolved automatically in this attachment."
+            : $"Confirmed {discovery.Name}, but its saved address moved and was rebound. A pointer path is still required.";
+    }
+
+    private void UpdateDiscovery()
+    {
+        if (SelectedDiscovery is null)
+        {
+            return;
+        }
+
+        var discovery = SelectedDiscovery.Discovery;
+        discovery.Name = DiscoveryName.Trim();
+        discovery.Notes = DiscoveryNotes.Trim();
+        PopulateDiscoveries(discovery.Id);
+        Status = $"Updated details for {discovery.Name}.";
+    }
+
+    private DiscoveryValidation CreateValidation(CandidateViewModel candidate, bool confirmed,
+        bool addressResolvedAutomatically)
+        => new()
+        {
+            AttachmentSessionId = attachmentSessionId,
+            ExecutableIdentity = SelectedProcess?.ExecutableIdentity ?? "unavailable",
+            ObservedAddress = candidate.Candidate.Address,
+            ObservedValue = candidate.CurrentValue,
+            Confirmed = confirmed,
+            AddressResolvedAutomatically = addressResolvedAutomatically
+        };
+
+    private void SetBestAddressResolution(SavedDiscovery discovery, ulong address)
+    {
+        if (SelectedProcess is not null
+            && SelectedProcess.TryGetMainModuleOffset(address, out var moduleOffset))
+        {
+            discovery.AddressResolution = AddressResolutionKind.MainModuleRelative;
+            discovery.ModuleName = SelectedProcess.MainModuleName;
+            discovery.ModuleOffset = moduleOffset;
+            return;
+        }
+
+        discovery.AddressResolution = AddressResolutionKind.Absolute;
+        discovery.ModuleName = string.Empty;
+        discovery.ModuleOffset = 0;
+    }
+
+    private bool TryResolveAddress(SavedDiscovery discovery, out ulong address)
+    {
+        address = discovery.LastKnownAddress;
+        if (discovery.AddressResolution == AddressResolutionKind.Absolute)
+        {
+            return true;
+        }
+
+        if (SelectedProcess is null
+            || !string.Equals(discovery.ModuleName, SelectedProcess.MainModuleName,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return SelectedProcess.TryResolveMainModuleOffset(discovery.ModuleOffset, out address);
+    }
+
+    private void PopulateDiscoveries(Guid? selectId = null)
+    {
+        var requestedId = selectId ?? SelectedDiscovery?.Discovery.Id;
+        selectedDiscovery = null;
+        OnPropertyChanged(nameof(SelectedDiscovery));
+        Discoveries.Clear();
+        foreach (var discovery in project.Discoveries)
+        {
+            Discoveries.Add(new DiscoveryViewModel(discovery));
+        }
+
+        SelectedDiscovery = Discoveries.FirstOrDefault(item => item.Discovery.Id == requestedId);
+        OnPropertyChanged(nameof(DiscoveryCount));
     }
 
     private async Task SaveProjectAsync()
@@ -394,6 +549,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         project = await ProjectStore.LoadAsync(dialog.FileName);
+        PopulateDiscoveries();
         OnPropertyChanged(nameof(ProjectName));
         OnPropertyChanged(nameof(DiscoveryCount));
         Status = $"Opened {project.Name}. Saved addresses are not assumed valid until re-tested.";
@@ -402,6 +558,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void NewProject()
     {
         project = new TrainerProject { Name = $"Trainer Project {DateTime.Now:yyyy-MM-dd}" };
+        Discoveries.Clear();
+        SelectedDiscovery = null;
         OnPropertyChanged(nameof(ProjectName));
         OnPropertyChanged(nameof(DiscoveryCount));
         Status = "Created a new project.";
@@ -428,6 +586,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         CancelCommand.RaiseCanExecuteChanged();
         WriteValueCommand.RaiseCanExecuteChanged();
         AddDiscoveryCommand.RaiseCanExecuteChanged();
+        ValidateDiscoveryCommand.RaiseCanExecuteChanged();
+        UpdateDiscoveryCommand.RaiseCanExecuteChanged();
         SaveProjectCommand.RaiseCanExecuteChanged();
         OpenProjectCommand.RaiseCanExecuteChanged();
         NewProjectCommand.RaiseCanExecuteChanged();

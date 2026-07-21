@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-source — 2026-07-21
+
+- Added stable project and discovery IDs with migration from the 0.1 project format.
+- Added discovery notes, a saved-discovery browser, and editable discovery details.
+- Added absolute and main-module-relative address records.
+- Added per-attachment validation history tied to executable identity.
+- Added evidence-based experimental, session-stable, restart-stable, and
+  update-stable reliability evaluation.
+- Added honest manual-rebind handling when a saved address moves.
+- Replaced direct project writes with temporary-file replacement to reduce the
+  chance of corrupting an existing project during a failed save.
+- Expanded the dependency-free core test runner from 5 to 10 tests.
+
+Pointer-path discovery is still not implemented. Heap values that move between
+launches can be rebound and documented, but they are not presented as stable.
+
 ## 0.1.0-source — 2026-07-21
 
 - Added the Windows 11 x64 WPF application shell.
