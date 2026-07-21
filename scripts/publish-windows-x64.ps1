@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$FrameworkDependent
+    [switch]$FrameworkDependent,
+    [switch]$SkipBuildAndTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -10,7 +11,13 @@ $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
 
 Push-Location $root
 try {
-    & "$PSScriptRoot\build-and-test.ps1" -Configuration Release
+    if (-not $SkipBuildAndTest) {
+        & "$PSScriptRoot\build-and-test.ps1" -Configuration Release
+    }
+
+    if (Test-Path $output) {
+        Remove-Item -LiteralPath $output -Recurse -Force
+    }
 
     dotnet publish .\src\TrainerStudio.App\TrainerStudio.App.csproj -c Release -r win-x64 `
         --self-contained $selfContained -p:PublishSingleFile=true `
@@ -21,6 +28,9 @@ try {
         --self-contained $selfContained -p:PublishSingleFile=true `
         -o (Join-Path $output 'TestGame')
     if ($LASTEXITCODE -ne 0) { throw 'Test game publish failed.' }
+
+    Copy-Item -LiteralPath .\README.md -Destination (Join-Path $output 'README.md')
+    Copy-Item -LiteralPath .\docs\TESTING.md -Destination (Join-Path $output 'TESTING.md')
 
     Write-Host "Published Windows x64 files to $output" -ForegroundColor Green
 }

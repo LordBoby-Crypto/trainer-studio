@@ -39,6 +39,10 @@ Run the tests with:
 dotnet run --project .\tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.csproj -c Release -p:Platform=x64
 ```
 
+Every successful GitHub Actions run also produces a self-contained
+`TrainerStudio-windows-x64` test bundle. It contains Trainer Studio, the controlled
+test game, and the testing checklist; the bundle does not require the .NET SDK.
+
 ## First real test
 
 1. Launch `Trainer Studio Test Game`.

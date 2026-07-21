@@ -12,6 +12,7 @@
 - Replaced direct project writes with temporary-file replacement to reduce the
   chance of corrupting an existing project during a failed save.
 - Expanded the dependency-free core test runner from 5 to 10 tests.
+- Added a self-contained Windows x64 test bundle to successful CI runs.
 
 Pointer-path discovery is still not implemented. Heap values that move between
 launches can be rebound and documented, but they are not presented as stable.

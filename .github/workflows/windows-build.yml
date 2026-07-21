@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -17,3 +18,13 @@ jobs:
         run: dotnet build .\TrainerStudio.sln -c Release -p:Platform=x64
       - name: Core tests
         run: dotnet run --project .\tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.csproj -c Release -p:Platform=x64
+      - name: Publish self-contained Windows test bundle
+        shell: pwsh
+        run: .\scripts\publish-windows-x64.ps1 -SkipBuildAndTest
+      - name: Upload Windows test bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrainerStudio-windows-x64-${{ github.sha }}
+          path: artifacts/windows-x64
+          if-no-files-found: error
+          retention-days: 14
