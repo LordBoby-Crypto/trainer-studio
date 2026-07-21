@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.Core", "src\TrainerStudio.Core\TrainerStudio.Core.csproj", "{31A5D005-6E65-4800-A050-3CCB21794499}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.Windows", "src\TrainerStudio.Windows\TrainerStudio.Windows.csproj", "{27E10240-C6A7-43C9-BDB1-E1F710CF47AE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.App", "src\TrainerStudio.App\TrainerStudio.App.csproj", "{4556CF09-6AC6-4D35-91A2-742EAA858038}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.TestGame", "src\TrainerStudio.TestGame\TrainerStudio.TestGame.csproj", "{F975BB23-72E8-4632-9B9F-C5DB993E81C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.Core.Tests", "tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.csproj", "{4A0ECF61-C16C-4174-9263-59C7115A5DA9}"
+EndProject
+Global
+  GlobalSection(SolutionConfigurationPlatforms) = preSolution
+    Debug|x64 = Debug|x64
+    Release|x64 = Release|x64
+  EndGlobalSection
+  GlobalSection(ProjectConfigurationPlatforms) = postSolution
+    {31A5D005-6E65-4800-A050-3CCB21794499}.Debug|x64.ActiveCfg = Debug|x64
+    {31A5D005-6E65-4800-A050-3CCB21794499}.Debug|x64.Build.0 = Debug|x64
+    {31A5D005-6E65-4800-A050-3CCB21794499}.Release|x64.ActiveCfg = Release|x64
+    {31A5D005-6E65-4800-A050-3CCB21794499}.Release|x64.Build.0 = Release|x64
+    {27E10240-C6A7-43C9-BDB1-E1F710CF47AE}.Debug|x64.ActiveCfg = Debug|x64
+    {27E10240-C6A7-43C9-BDB1-E1F710CF47AE}.Debug|x64.Build.0 = Debug|x64
+    {27E10240-C6A7-43C9-BDB1-E1F710CF47AE}.Release|x64.ActiveCfg = Release|x64
+    {27E10240-C6A7-43C9-BDB1-E1F710CF47AE}.Release|x64.Build.0 = Release|x64
+    {4556CF09-6AC6-4D35-91A2-742EAA858038}.Debug|x64.ActiveCfg = Debug|x64
+    {4556CF09-6AC6-4D35-91A2-742EAA858038}.Debug|x64.Build.0 = Debug|x64
+    {4556CF09-6AC6-4D35-91A2-742EAA858038}.Release|x64.ActiveCfg = Release|x64
+    {4556CF09-6AC6-4D35-91A2-742EAA858038}.Release|x64.Build.0 = Release|x64
+    {F975BB23-72E8-4632-9B9F-C5DB993E81C8}.Debug|x64.ActiveCfg = Debug|x64
+    {F975BB23-72E8-4632-9B9F-C5DB993E81C8}.Debug|x64.Build.0 = Debug|x64
+    {F975BB23-72E8-4632-9B9F-C5DB993E81C8}.Release|x64.ActiveCfg = Release|x64
+    {F975BB23-72E8-4632-9B9F-C5DB993E81C8}.Release|x64.Build.0 = Release|x64
+    {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Debug|x64.ActiveCfg = Debug|x64
+    {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Debug|x64.Build.0 = Debug|x64
+    {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Release|x64.ActiveCfg = Release|x64
+    {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Release|x64.Build.0 = Release|x64
+  EndGlobalSection
+EndGlobal

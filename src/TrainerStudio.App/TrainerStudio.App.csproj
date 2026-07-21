@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TrainerStudio.Core\TrainerStudio.Core.csproj" />
+    <ProjectReference Include="..\TrainerStudio.Windows\TrainerStudio.Windows.csproj" />
+  </ItemGroup>
+</Project>
