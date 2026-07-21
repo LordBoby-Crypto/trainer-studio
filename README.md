@@ -3,16 +3,18 @@
 Trainer Studio is a Windows 11 x64 desktop application for creating personal,
 single-player game trainers for games you own and are authorized to modify.
 
-The first milestone is intentionally focused on the hard foundation:
+The current source milestones focus on the scanning and evidence foundation:
 
 - enumerate and attach to x64 processes;
 - scan readable process memory for exact `Int32`, `Float32`, and `Float64` values;
 - narrow results by exact, changed, unchanged, increased, or decreased state;
 - edit a confirmed value;
-- save discoveries in a portable project file;
+- save labeled discoveries and notes in a portable, migration-aware project file;
+- record absolute or main-module-relative addresses;
+- confirm discoveries across attachments and calculate reliability from evidence;
 - exercise the workflow against an included, harmless x64 test game.
 
-Trainer Studio does not currently create pointer chains, trace instructions,
+Trainer Studio does not currently discover pointer chains, trace instructions,
 generate injections, repair signatures, or export standalone trainers. Those are
 later milestones and are not represented as finished features.
 
@@ -37,6 +39,10 @@ Run the tests with:
 dotnet run --project .\tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.csproj -c Release -p:Platform=x64
 ```
 
+Every successful GitHub Actions run also produces a self-contained
+`TrainerStudio-windows-x64` test bundle. It contains Trainer Studio, the controlled
+test game, and the testing checklist; the bundle does not require the .NET SDK.
+
 ## First real test
 
 1. Launch `Trainer Studio Test Game`.
@@ -48,6 +54,12 @@ dotnet run --project .\tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.c
 7. Enter `2625`, select `Exact`, and choose **Next scan**.
 8. Repeat once if multiple candidates remain.
 9. Select a result, enter a new value, and choose **Write value**.
+10. Save it as a discovery, select the saved discovery, and choose **Confirm result**
+    while the corresponding scan result is selected.
+
+Main-module-relative discoveries can resolve through normal address-space layout
+randomization. Heap discoveries still require pointer-path work; a manual rebind
+is recorded without inflating the reliability rating.
 
 Keep this project limited to offline, authorized targets. Do not use it to evade
 anti-cheat, tamper with protected multiplayer software, or modify software you do

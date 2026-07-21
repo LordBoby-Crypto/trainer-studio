@@ -10,7 +10,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 Expected result: the solution builds with no warnings or errors and the console
-reports `5/5 tests passed`.
+reports `10/10 tests passed`.
 
 ## Controlled scan gate
 
@@ -26,6 +26,19 @@ reports `5/5 tests passed`.
 9. Write `9000` from Trainer Studio. The test game must display `9000` without a
    restart.
 10. Add the result as a discovery and save the project JSON.
+
+## Discovery evidence gate
+
+1. Add notes while saving the Credits result as a discovery.
+2. Select the saved discovery and the corresponding scan result.
+3. Choose **Confirm result**. The app should report that the saved address resolved
+   automatically and show two confirmations in one attachment.
+4. The reliability should change to **Session stable**.
+5. Save, close, reopen the project, and confirm that the name, notes, address
+   description, validation count, and reliability are preserved.
+6. Restart the test game, rediscover Credits, and confirm the new result. Because
+   Credits is allocated on the heap, the app should report a moved address and a
+   manual rebind. It must not call the discovery restart-stable.
 
 ## Comparison gate
 

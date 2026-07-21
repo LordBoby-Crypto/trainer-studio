@@ -13,11 +13,11 @@
 
 ## M2 — Durable discoveries
 
-- Persistent project workflow in the UI
-- Address labels and notes
+- [x] Persistent project workflow in the UI
+- [x] Address labels and notes
 - Pointer-path scanner with restart validation
-- Module-relative address support
-- Repeated-session confidence score
+- [x] Main-module-relative address support
+- [x] Repeated-session evidence and reliability rating
 
 ## M3 — Code discovery
 

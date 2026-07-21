@@ -26,16 +26,27 @@ public static class ProcessCatalog
                     }
 
                     string? path = null;
+                    var moduleName = string.Empty;
+                    ulong moduleBaseAddress = 0;
+                    ulong moduleSize = 0;
                     try
                     {
-                        path = process.MainModule?.FileName;
+                        var module = process.MainModule;
+                        if (module is not null)
+                        {
+                            path = module.FileName;
+                            moduleName = module.ModuleName;
+                            moduleBaseAddress = unchecked((ulong)module.BaseAddress.ToInt64());
+                            moduleSize = checked((ulong)module.ModuleMemorySize);
+                        }
                     }
                     catch
                     {
                         // Many system processes intentionally deny module queries.
                     }
 
-                    processes.Add(new ProcessDescriptor(process.Id, process.ProcessName, path));
+                    processes.Add(new ProcessDescriptor(process.Id, process.ProcessName, path,
+                        moduleName, moduleBaseAddress, moduleSize, CreateExecutableIdentity(path)));
                 }
                 catch
                 {
@@ -48,5 +59,24 @@ public static class ProcessCatalog
             .OrderBy(process => process.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(process => process.Id)
             .ToArray();
+    }
+
+    private static string CreateExecutableIdentity(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "unavailable";
+        }
+
+        try
+        {
+            var file = new FileInfo(path);
+            var version = FileVersionInfo.GetVersionInfo(path).FileVersion ?? "unversioned";
+            return $"{file.Name}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{version}";
+        }
+        catch
+        {
+            return Path.GetFileName(path);
+        }
     }
 }
