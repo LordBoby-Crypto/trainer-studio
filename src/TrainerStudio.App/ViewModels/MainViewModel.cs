@@ -57,7 +57,25 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         SaveProjectCommand = new AsyncRelayCommand(SaveProjectAsync, () => !IsBusy, SetError);
         OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync, () => !IsBusy, SetError);
         NewProjectCommand = new RelayCommand(NewProject, () => !IsBusy);
-        RefreshProcesses();
+    }
+
+    public async Task InitializeAsync()
+    {
+        IsBusy = true;
+        Status = "Discovering running processes...";
+
+        try
+        {
+            var discoveredProcesses = await Task.Run(ProcessCatalog.GetAttachableProcesses);
+            allProcesses.Clear();
+            allProcesses.AddRange(discoveredProcesses);
+            ApplyProcessFilter();
+            Status = $"Found {allProcesses.Count:N0} running processes.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public Array ValueTypes { get; } = Enum.GetValues(typeof(ScanValueType));

@@ -42,6 +42,13 @@ dotnet run --project .\tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.c
 Every successful GitHub Actions run also produces a self-contained
 `TrainerStudio-windows-x64` test bundle. It contains Trainer Studio, the controlled
 test game, and the testing checklist; the bundle does not require the .NET SDK.
+The workflow launches both published applications and verifies that they remain
+running before it uploads the bundle.
+
+If Trainer Studio encounters a startup error, it displays the failure and writes
+a diagnostic file to `%LOCALAPPDATA%\Trainer Studio\Logs\startup.log`. Startup
+logging is best-effort and falls back to `%TEMP%\TrainerStudio-startup.log` if the
+local app-data directory is unavailable.
 
 ## First real test
 
