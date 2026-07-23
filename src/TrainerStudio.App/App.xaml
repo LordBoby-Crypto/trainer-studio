@@ -55,7 +55,50 @@
     <Style TargetType="ComboBox">
       <Setter Property="Foreground" Value="#10131A" />
       <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="#AEB5C2" />
+      <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="8,6" />
+      <Setter Property="ItemTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" Foreground="#10131A" />
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="ItemContainerStyle">
+        <Setter.Value>
+          <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#10131A" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Padding" Value="9,7" />
+            <Style.Triggers>
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter Property="Background" Value="#DFE2FF" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#C9CEFF" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="#687080" />
+                <Setter Property="Opacity" Value="0.72" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+          <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Trigger>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="#F4F5FF" />
+        </Trigger>
+        <Trigger Property="IsEnabled" Value="False">
+          <Setter Property="Foreground" Value="#687080" />
+          <Setter Property="Background" Value="#D9DCE3" />
+          <Setter Property="Opacity" Value="0.82" />
+        </Trigger>
+      </Style.Triggers>
     </Style>
     <Style x:Key="Panel" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource PanelBrush}" />
