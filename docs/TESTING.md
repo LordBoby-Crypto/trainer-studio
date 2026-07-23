@@ -12,6 +12,15 @@ Set-ExecutionPolicy -Scope Process Bypass
 Expected result: the solution builds with no warnings or errors and the console
 reports `12/12 tests passed`.
 
+Run the live Windows pointer integration gate with:
+
+```powershell
+dotnet run --project .\tests\TrainerStudio.Windows.Tests\TrainerStudio.Windows.Tests.csproj -c Release -p:Platform=x64
+```
+
+Expected result: the runner reports `1/1 Windows pointer integration tests
+passed` after discovering, resolving, and writing through a real two-level path.
+
 ## Controlled scan gate
 
 1. Start the test game.

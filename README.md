@@ -89,6 +89,7 @@ src/TrainerStudio.Windows    Windows process-memory implementation
 src/TrainerStudio.App        WPF desktop application
 src/TrainerStudio.TestGame   Controlled x64 scan target
 tests/TrainerStudio.Core.Tests Dependency-free test runner
+tests/TrainerStudio.Windows.Tests Live Windows pointer integration gate
 docs                         Architecture and roadmap
 ```
 

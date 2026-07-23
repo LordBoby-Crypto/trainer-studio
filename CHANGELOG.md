@@ -12,6 +12,8 @@
 - Added **Find pointer paths** and **Resolve saved path** workflows.
 - Added a controlled two-level pointer fixture for the Credits value.
 - Expanded the dependency-free core test runner from 10 to 12 tests.
+- Added a live Windows integration gate that discovers, resolves, and writes
+  through a real two-level path in an attached process.
 
 ## 0.2.3-source — 2026-07-23
 

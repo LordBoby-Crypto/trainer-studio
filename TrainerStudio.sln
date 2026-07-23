@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.TestGame", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.Core.Tests", "tests\TrainerStudio.Core.Tests\TrainerStudio.Core.Tests.csproj", "{4A0ECF61-C16C-4174-9263-59C7115A5DA9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrainerStudio.Windows.Tests", "tests\TrainerStudio.Windows.Tests\TrainerStudio.Windows.Tests.csproj", "{7E2C0B3A-E904-4F2C-B6B7-8804C5C4BC82}"
+EndProject
 Global
   GlobalSection(SolutionConfigurationPlatforms) = preSolution
     Debug|x64 = Debug|x64
@@ -38,5 +40,9 @@ Global
     {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Debug|x64.Build.0 = Debug|x64
     {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Release|x64.ActiveCfg = Release|x64
     {4A0ECF61-C16C-4174-9263-59C7115A5DA9}.Release|x64.Build.0 = Release|x64
+    {7E2C0B3A-E904-4F2C-B6B7-8804C5C4BC82}.Debug|x64.ActiveCfg = Debug|x64
+    {7E2C0B3A-E904-4F2C-B6B7-8804C5C4BC82}.Debug|x64.Build.0 = Debug|x64
+    {7E2C0B3A-E904-4F2C-B6B7-8804C5C4BC82}.Release|x64.ActiveCfg = Release|x64
+    {7E2C0B3A-E904-4F2C-B6B7-8804C5C4BC82}.Release|x64.Build.0 = Release|x64
   EndGlobalSection
 EndGlobal
