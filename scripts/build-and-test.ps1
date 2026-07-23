@@ -23,7 +23,11 @@ try {
         -c $Configuration -p:Platform=x64
     if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
 
-    Write-Host 'Trainer Studio build and core tests passed.' -ForegroundColor Green
+    dotnet run --project .\tests\TrainerStudio.Windows.Tests\TrainerStudio.Windows.Tests.csproj `
+        -c $Configuration -p:Platform=x64
+    if ($LASTEXITCODE -ne 0) { throw 'Windows pointer integration test failed.' }
+
+    Write-Host 'Trainer Studio build, core tests, and Windows integration test passed.' -ForegroundColor Green
 }
 finally {
     Pop-Location

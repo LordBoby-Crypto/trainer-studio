@@ -36,4 +36,17 @@ public sealed record DiscoveryViewModel(SavedDiscovery Discovery)
             return $"{confirmations} confirmations · {sessions} sessions";
         }
     }
+
+    public string PointerPathSummary
+    {
+        get
+        {
+            var modulePaths = Discovery.PointerPaths.Count(path =>
+                path.RootKind == PointerRootKind.MainModuleRelative);
+            var absolutePaths = Discovery.PointerPaths.Count - modulePaths;
+            return Discovery.PointerPaths.Count == 0
+                ? "No pointer paths saved"
+                : $"{Discovery.PointerPaths.Count} paths · {modulePaths} module · {absolutePaths} experimental";
+        }
+    }
 }

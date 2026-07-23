@@ -90,6 +90,20 @@ public static class ProjectStore
 
             discovery.Id = discovery.Id == Guid.Empty ? Guid.NewGuid() : discovery.Id;
             discovery.Validations ??= [];
+            discovery.PointerPaths ??= [];
+            foreach (var pointerPath in discovery.PointerPaths)
+            {
+                pointerPath.Id = pointerPath.Id == Guid.Empty ? Guid.NewGuid() : pointerPath.Id;
+                pointerPath.ModuleName ??= string.Empty;
+                pointerPath.Offsets ??= [];
+                pointerPath.Validations ??= [];
+                if (pointerPath.PointerSize != 8 || pointerPath.Offsets.Count == 0)
+                {
+                    throw new InvalidDataException(
+                        $"The pointer path saved for {discovery.Name} is invalid.");
+                }
+            }
+
             DiscoveryReliabilityEvaluator.Refresh(discovery);
         }
 

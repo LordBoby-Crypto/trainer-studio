@@ -10,8 +10,21 @@ namespace TrainerStudio.TestGame;
 
 public unsafe partial class MainWindow : Window
 {
+    private const uint MemCommit = 0x1000;
+    private const uint MemReserve = 0x2000;
+    private const uint MemRelease = 0x8000;
+    private const uint PageReadWrite = 0x04;
+    private static readonly ulong[] PreferredPointerRoots =
+    [
+        0x0000050000000000,
+        0x0000051000000000,
+        0x0000052000000000
+    ];
+
     private readonly DispatcherTimer timer;
     private readonly Stopwatch stopwatch = Stopwatch.StartNew();
+    private readonly nint pointerRoot;
+    private readonly GamePointerNode* pointerNode;
     private readonly GameValues* values;
     private bool leftPressed;
     private bool rightPressed;
@@ -24,8 +37,21 @@ public unsafe partial class MainWindow : Window
     {
         InitializeComponent();
         values = (GameValues*)NativeMemory.AllocZeroed((nuint)sizeof(GameValues));
+        pointerNode = (GamePointerNode*)NativeMemory.AllocZeroed(
+            (nuint)sizeof(GamePointerNode));
+        pointerRoot = AllocatePointerRoot();
+        if (values == null || pointerNode == null || pointerRoot == 0)
+        {
+            ReleaseNativeMemory();
+            throw new InvalidOperationException(
+                "The controlled pointer-path fixture could not allocate memory.");
+        }
+
+        pointerNode->Values = (ulong)values;
+        *(ulong*)pointerRoot = (ulong)pointerNode;
         ResetValues();
-        AddressText.Text = $"0x{(ulong)values:X16}";
+        AddressText.Text =
+            $"values 0x{(ulong)values:X16}  ·  root 0x{(ulong)pointerRoot:X16}";
         timer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(16)
@@ -131,8 +157,48 @@ public unsafe partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         timer.Stop();
-        NativeMemory.Free(values);
+        ReleaseNativeMemory();
         base.OnClosed(e);
+    }
+
+    private static nint AllocatePointerRoot()
+    {
+        foreach (var candidate in PreferredPointerRoots)
+        {
+            var allocation = NativeMethods.VirtualAlloc(
+                unchecked((nint)candidate),
+                0x1000,
+                MemReserve | MemCommit,
+                PageReadWrite);
+            if (allocation != 0)
+            {
+                return allocation;
+            }
+        }
+
+        return NativeMethods.VirtualAlloc(
+            0,
+            0x1000,
+            MemReserve | MemCommit,
+            PageReadWrite);
+    }
+
+    private void ReleaseNativeMemory()
+    {
+        if (pointerRoot != 0)
+        {
+            NativeMethods.VirtualFree(pointerRoot, 0, MemRelease);
+        }
+
+        NativeMemory.Free(pointerNode);
+        NativeMemory.Free(values);
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 0x20)]
+    private struct GamePointerNode
+    {
+        [FieldOffset(0x18)]
+        public ulong Values;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -145,5 +211,22 @@ public unsafe partial class MainWindow : Window
         public float MovementSpeed;
         public float JumpHeight;
         public double GameTime;
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern nint VirtualAlloc(
+            nint address,
+            nuint size,
+            uint allocationType,
+            uint protect);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool VirtualFree(
+            nint address,
+            nuint size,
+            uint freeType);
     }
 }

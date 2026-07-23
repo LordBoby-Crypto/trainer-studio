@@ -12,6 +12,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Project atomic overwrite", ProjectAtomicOverwriteAsync),
     ("Legacy project migration", LegacyProjectMigrationAsync),
     ("Module-relative address math", () => RunSync(ModuleRelativeAddressMath)),
+    ("Multi-level pointer resolution", () => RunSync(MultiLevelPointerResolution)),
+    ("Pointer resolution overflow", () => RunSync(PointerResolutionOverflow)),
     ("Session reliability", () => RunSync(SessionReliability)),
     ("Restart and update reliability", () => RunSync(RestartAndUpdateReliability))
 };
@@ -87,7 +89,17 @@ static async Task ProjectRoundTripAsync()
             Name = "Credits",
             LastKnownAddress = 0x1234,
             LastKnownValue = "2500",
-            ValueType = ScanValueType.Int32
+            ValueType = ScanValueType.Int32,
+            PointerPaths =
+            [
+                new PointerPath
+                {
+                    RootKind = PointerRootKind.MainModuleRelative,
+                    ModuleName = "test.exe",
+                    RootOffset = 0x240,
+                    Offsets = [0x18, 0x08]
+                }
+            ]
         });
         await ProjectStore.SaveAsync(project, path);
         var loaded = await ProjectStore.LoadAsync(path);
@@ -98,6 +110,10 @@ static async Task ProjectRoundTripAsync()
             "Project format was not current after load.");
         Assert(loaded.ProjectId != Guid.Empty, "Project ID was not persisted.");
         Assert(loaded.Discoveries.Single().Id != Guid.Empty, "Discovery ID was not persisted.");
+        var pointerPath = loaded.Discoveries.Single().PointerPaths.Single();
+        Assert(pointerPath.RootOffset == 0x240, "Pointer root changed.");
+        Assert(pointerPath.Offsets.SequenceEqual([0x18UL, 0x08UL]),
+            "Pointer offsets changed.");
     }
     finally
     {
@@ -162,6 +178,8 @@ static async Task LegacyProjectMigrationAsync()
             "Legacy discovery did not receive an ID.");
         Assert(loaded.Discoveries.Single().Validations.Count == 0,
             "Migration invented validation evidence.");
+        Assert(loaded.Discoveries.Single().PointerPaths.Count == 0,
+            "Migration invented pointer paths.");
     }
     finally
     {
@@ -197,6 +215,50 @@ static void ModuleRelativeAddressMath()
         "The first address beyond the module was accepted.");
     Assert(!ModuleAddressMath.TryResolve(ulong.MaxValue - 2, 10, 5, out _),
         "Overflowing module address was accepted.");
+}
+
+static void MultiLevelPointerResolution()
+{
+    var memory = new Dictionary<ulong, ulong>
+    {
+        [0x1240] = 0x5000,
+        [0x5018] = 0x9000
+    };
+    var path = new PointerPath
+    {
+        RootKind = PointerRootKind.MainModuleRelative,
+        ModuleName = "game.exe",
+        RootOffset = 0x240,
+        Offsets = [0x18, 0x08]
+    };
+
+    var resolved = PointerPathResolver.TryResolve(
+        path,
+        (module, offset) => module == "game.exe" ? 0x1000UL + offset : null,
+        address => memory.TryGetValue(address, out var pointer) ? pointer : null,
+        out var rootAddress,
+        out var resolvedAddress);
+
+    Assert(resolved, "Valid pointer path did not resolve.");
+    Assert(rootAddress == 0x1240, "Pointer root was resolved incorrectly.");
+    Assert(resolvedAddress == 0x9008, "Pointer path target was resolved incorrectly.");
+}
+
+static void PointerResolutionOverflow()
+{
+    var path = new PointerPath
+    {
+        RootKind = PointerRootKind.Absolute,
+        AbsoluteRootAddress = 0x1000,
+        Offsets = [8]
+    };
+    var resolved = PointerPathResolver.TryResolve(
+        path,
+        (_, _) => null,
+        _ => ulong.MaxValue - 2,
+        out _,
+        out _);
+    Assert(!resolved, "Overflowing pointer path was accepted.");
 }
 
 static void RestartAndUpdateReliability()

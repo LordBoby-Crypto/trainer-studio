@@ -4,7 +4,7 @@ namespace TrainerStudio.Core.Projects;
 
 public sealed class TrainerProject
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
 
     public int FormatVersion { get; set; } = CurrentFormatVersion;
     public Guid ProjectId { get; set; } = Guid.NewGuid();
@@ -28,6 +28,7 @@ public sealed class SavedDiscovery
     public string LastKnownValue { get; set; } = string.Empty;
     public DiscoveryReliability Reliability { get; set; } = DiscoveryReliability.Experimental;
     public List<DiscoveryValidation> Validations { get; set; } = [];
+    public List<PointerPath> PointerPaths { get; set; } = [];
 }
 
 public sealed class DiscoveryValidation

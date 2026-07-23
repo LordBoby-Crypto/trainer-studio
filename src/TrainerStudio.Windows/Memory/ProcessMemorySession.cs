@@ -72,7 +72,12 @@ public sealed class ProcessMemorySession : IDisposable
                 && (information.Protect & NativeMethods.PageGuard) == 0
                 && information.RegionSize > 0)
             {
-                yield return new MemoryRegion(information.BaseAddress, information.RegionSize);
+                yield return new MemoryRegion(
+                    information.BaseAddress,
+                    information.AllocationBase,
+                    information.RegionSize,
+                    information.Protect,
+                    information.Type);
             }
 
             if (next <= address)
@@ -105,6 +110,14 @@ public sealed class ProcessMemorySession : IDisposable
     {
         var buffer = new byte[count];
         return Read(address, buffer, count) == count ? buffer : null;
+    }
+
+    public ulong? TryReadPointer(ulong address)
+    {
+        var bytes = TryRead(address, sizeof(ulong));
+        return bytes is null
+            ? null
+            : System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes);
     }
 
     public void Write(ulong address, byte[] value)

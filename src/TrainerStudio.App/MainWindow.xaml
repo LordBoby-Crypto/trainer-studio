@@ -227,6 +227,8 @@
                              Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" />
                   <TextBlock Text="{Binding ValidationSummary}" FontSize="10"
                              Foreground="{StaticResource MutedBrush}" />
+                  <TextBlock Text="{Binding PointerPathSummary}" FontSize="10"
+                             Foreground="{StaticResource MutedBrush}" />
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
@@ -242,6 +244,19 @@
             <Button Grid.Column="2" Content="Confirm result" Command="{Binding ValidateDiscoveryCommand}"
                     Style="{StaticResource SecondaryButton}" Padding="8,7"
                     ToolTip="Confirm that the selected scan result is this saved discovery" />
+          </Grid>
+          <Grid Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="8" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button Content="Find pointer paths" Command="{Binding FindPointerPathsCommand}"
+                    Style="{StaticResource SecondaryButton}" Padding="8,7"
+                    ToolTip="Search backward from the selected scan result for bounded 64-bit pointer paths" />
+            <Button Grid.Column="2" Content="Resolve saved path" Command="{Binding ResolveDiscoveryCommand}"
+                    Style="{StaticResource SecondaryButton}" Padding="8,7"
+                    ToolTip="Resolve this discovery after reattaching without repeating a value scan" />
           </Grid>
           <TextBlock Text="Confirming the same resolved address across attachments raises its reliability. If the address moves, Trainer Studio records the rebind without calling it restart-stable."
                      TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11"
