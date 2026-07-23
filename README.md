@@ -11,12 +11,14 @@ The current source milestones focus on the scanning and evidence foundation:
 - edit a confirmed value;
 - save labeled discoveries and notes in a portable, migration-aware project file;
 - record absolute or main-module-relative addresses;
+- find bounded 64-bit pointer paths leading to a confirmed address;
+- save and resolve pointer paths without repeating a value scan;
 - confirm discoveries across attachments and calculate reliability from evidence;
 - exercise the workflow against an included, harmless x64 test game.
 
-Trainer Studio does not currently discover pointer chains, trace instructions,
-generate injections, repair signatures, or export standalone trainers. Those are
-later milestones and are not represented as finished features.
+Trainer Studio does not currently trace instructions, generate injections,
+repair signatures, or export standalone trainers. Pointer-path scanning is an
+early bounded implementation rather than a universal pointer-map engine.
 
 ## Requirements
 
@@ -63,10 +65,17 @@ local app-data directory is unavailable.
 9. Select a result, enter a new value, and choose **Write value**.
 10. Save it as a discovery, select the saved discovery, and choose **Confirm result**
     while the corresponding scan result is selected.
+11. Choose **Find pointer paths** while the saved discovery and confirmed result
+    are selected.
+12. Save the project, restart the test game, reattach, and choose
+    **Resolve saved path**. Credits should be recovered without a new value scan.
+13. Confirm the displayed value before choosing **Confirm result**. Two
+    automatically resolved attachment sessions are required for **Restart stable**.
 
-Main-module-relative discoveries can resolve through normal address-space layout
-randomization. Heap discoveries still require pointer-path work; a manual rebind
-is recorded without inflating the reliability rating.
+The default pointer search follows aligned 64-bit pointers for up to three levels
+with positive offsets no larger than `0x1000`. Main-module roots are preferred.
+Page-aligned absolute roots are retained as experimental candidates and must
+survive a real restart test before they contribute reliability evidence.
 
 Keep this project limited to offline, authorized targets. Do not use it to evade
 anti-cheat, tamper with protected multiplayer software, or modify software you do

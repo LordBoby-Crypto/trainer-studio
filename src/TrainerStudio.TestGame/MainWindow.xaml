@@ -90,9 +90,9 @@
     <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#0E1527" BorderBrush="#25304B"
             BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,13,0,0">
       <StackPanel Orientation="Horizontal">
-        <TextBlock Text="Stable native test block: " Foreground="#94A0B8" />
+        <TextBlock Text="Pointer-path test fixture: " Foreground="#94A0B8" />
         <TextBlock x:Name="AddressText" FontFamily="Cascadia Mono" Foreground="#56E0D1" />
-        <TextBlock Text="  ·  This address is shown only to validate scanner results." Foreground="#94A0B8" />
+        <TextBlock Text="  ·  Shown only to validate scanner results." Foreground="#94A0B8" />
       </StackPanel>
     </Border>
   </Grid>

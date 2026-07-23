@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0-source — 2026-07-23
+
+- Added a bounded, cancellable x64 pointer-path scanner with three-level,
+  `0x1000`-offset defaults and explicit safety caps.
+- Added main-module-relative pointer roots and experimental page-aligned
+  absolute roots.
+- Added deterministic multi-level path resolution and overflow checks.
+- Upgraded the project document to format 3 with persisted pointer paths and
+  per-path resolution evidence.
+- Added **Find pointer paths** and **Resolve saved path** workflows.
+- Added a controlled two-level pointer fixture for the Credits value.
+- Expanded the dependency-free core test runner from 10 to 12 tests.
+
 ## 0.2.3-source — 2026-07-23
 
 - Made value-type and comparison selections readable by explicitly styling the
@@ -37,9 +50,6 @@
   chance of corrupting an existing project during a failed save.
 - Expanded the dependency-free core test runner from 5 to 10 tests.
 - Added a self-contained Windows x64 test bundle to successful CI runs.
-
-Pointer-path discovery is still not implemented. Heap values that move between
-launches can be rebound and documented, but they are not presented as stable.
 
 ## 0.1.0-source — 2026-07-21
 

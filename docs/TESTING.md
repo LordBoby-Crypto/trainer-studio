@@ -10,7 +10,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 Expected result: the solution builds with no warnings or errors and the console
-reports `10/10 tests passed`.
+reports `12/12 tests passed`.
 
 ## Controlled scan gate
 
@@ -36,9 +36,25 @@ reports `10/10 tests passed`.
 4. The reliability should change to **Session stable**.
 5. Save, close, reopen the project, and confirm that the name, notes, address
    description, validation count, and reliability are preserved.
-6. Restart the test game, rediscover Credits, and confirm the new result. Because
-   Credits is allocated on the heap, the app should report a moved address and a
-   manual rebind. It must not call the discovery restart-stable.
+6. While the saved Credits discovery and confirmed scan result are selected,
+   choose **Find pointer paths**. At least one bounded path must be saved.
+7. Save the project and close the test game.
+
+## Pointer restart gate
+
+1. Reopen the test game. Its values and intermediate pointer node should receive
+   new heap addresses.
+2. Reattach Trainer Studio to the new test-game process.
+3. Open the saved project if it is not already open and select Credits.
+4. Choose **Resolve saved path** without running a value scan.
+5. The results table must show the current Credits value at the newly resolved
+   address.
+6. Write `9100`; the test game must immediately display `9100`.
+7. Choose **Confirm result** only after visually confirming the value.
+8. The discovery should become **Restart stable** once it has automatic
+   confirmations in two distinct attachment sessions.
+9. Save, reopen the project, and verify the pointer-path count and reliability are
+   preserved.
 
 ## Comparison gate
 
@@ -54,9 +70,9 @@ Repeat with Health (`100`) and use the damage button:
 Scan Jump Height as `Float32`, starting at `12.25`. Choose **Increase jump by
 1.25**, then narrow using exact `13.5` or the `Increased` comparison.
 
-## Restart limitation
+## Pointer scan limits
 
-Restarting the test game intentionally changes the native block address. A saved
-raw address should be treated as invalid after restart. Pointer discovery is the
-next milestone that will solve this; the current application must not present a
-raw address as restart-stable.
+The first pointer milestone intentionally searches aligned 64-bit pointers with
+positive offsets only. It does not yet support negative offsets, pointer maps
+captured to disk, multiple module roots, custom depth/offset controls, or
+instruction-derived roots.

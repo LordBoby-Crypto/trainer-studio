@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly List<ProcessDescriptor> allProcesses = [];
     private ProcessMemorySession? memory;
     private ComparativeScanner? scanner;
+    private PointerPathScanner? pointerScanner;
     private ScanSession? scanSession;
     private CancellationTokenSource? scanCancellation;
     private ProcessDescriptor? selectedProcess;
@@ -54,6 +55,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         UpdateDiscoveryCommand = new RelayCommand(UpdateDiscovery,
             () => SelectedDiscovery is not null && !string.IsNullOrWhiteSpace(DiscoveryName)
                 && !IsBusy);
+        FindPointerPathsCommand = new AsyncRelayCommand(FindPointerPathsAsync,
+            () => pointerScanner is not null && SelectedDiscovery is not null
+                && SelectedCandidate is not null && !IsBusy, SetError);
+        ResolveDiscoveryCommand = new RelayCommand(ResolveSelectedDiscovery,
+            () => memory is not null && SelectedDiscovery is not null
+                && SelectedDiscovery.Discovery.PointerPaths.Count > 0 && !IsBusy);
         SaveProjectCommand = new AsyncRelayCommand(SaveProjectAsync, () => !IsBusy, SetError);
         OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync, () => !IsBusy, SetError);
         NewProjectCommand = new RelayCommand(NewProject, () => !IsBusy);
@@ -93,6 +100,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand AddDiscoveryCommand { get; }
     public RelayCommand ValidateDiscoveryCommand { get; }
     public RelayCommand UpdateDiscoveryCommand { get; }
+    public AsyncRelayCommand FindPointerPathsCommand { get; }
+    public RelayCommand ResolveDiscoveryCommand { get; }
     public AsyncRelayCommand SaveProjectCommand { get; }
     public AsyncRelayCommand OpenProjectCommand { get; }
     public RelayCommand NewProjectCommand { get; }
@@ -249,6 +258,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             memory?.Dispose();
             memory = null;
             scanner = null;
+            pointerScanner = null;
             scanSession = null;
             Candidates.Clear();
             SelectedCandidate = null;
@@ -257,6 +267,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             AttachedProcess = "No process attached";
             memory = ProcessMemorySession.Attach(SelectedProcess);
             scanner = new ComparativeScanner(memory);
+            pointerScanner = new PointerPathScanner(memory);
             attachmentSessionId = Guid.NewGuid();
             project.ExecutableName = Path.GetFileName(SelectedProcess.FilePath)
                 ?? SelectedProcess.Name;
@@ -443,8 +454,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         var selectedAddress = SelectedCandidate.Candidate.Address;
-        var resolvedAutomatically = TryResolveAddress(discovery, out var resolvedAddress)
-            && resolvedAddress == selectedAddress;
+        var resolvedAutomatically = CanAutomaticallyResolveAddress(
+            discovery, selectedAddress);
         discovery.Validations.Add(CreateValidation(SelectedCandidate, confirmed: true,
             resolvedAutomatically));
         discovery.LastKnownAddress = selectedAddress;
@@ -476,6 +487,129 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Status = $"Updated details for {discovery.Name}.";
     }
 
+    private async Task FindPointerPathsAsync()
+    {
+        if (pointerScanner is null || SelectedDiscovery is null
+            || SelectedCandidate is null || SelectedProcess is null)
+        {
+            return;
+        }
+
+        var discovery = SelectedDiscovery.Discovery;
+        if (scanSession is null || scanSession.ValueType != discovery.ValueType)
+        {
+            Status = $"Select a {discovery.ValueType} scan result for {discovery.Name}.";
+            return;
+        }
+
+        scanCancellation?.Dispose();
+        scanCancellation = new CancellationTokenSource();
+        IsBusy = true;
+        Progress = 0;
+        Status = $"Searching backward from {SelectedCandidate.Address} for pointer paths…";
+        var reporter = new Progress<PointerScanProgress>(scanProgress =>
+        {
+            Progress = scanProgress.Fraction * 100;
+            Status = $"Pointer level {scanProgress.CurrentLevel}/{scanProgress.MaximumDepth}"
+                + $" · {scanProgress.FrontierNodes:N0} links";
+        });
+
+        try
+        {
+            var result = await pointerScanner.FindPathsAsync(
+                SelectedCandidate.Candidate.Address,
+                SelectedProcess,
+                new PointerScanOptions(),
+                reporter,
+                scanCancellation.Token);
+            MergePointerPaths(discovery, result.Paths);
+            PopulateDiscoveries(discovery.Id);
+            Status = result.Paths.Count == 0
+                ? "No bounded pointer paths were found. The value remains usable only for this attachment."
+                : $"Saved {result.Paths.Count:N0} pointer paths for {discovery.Name}"
+                    + (result.Truncated ? " (safety limits reached)." : ".");
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Pointer scan canceled. Previously saved paths were preserved.";
+        }
+        finally
+        {
+            IsBusy = false;
+            scanCancellation.Dispose();
+            scanCancellation = null;
+        }
+    }
+
+    private static void MergePointerPaths(
+        SavedDiscovery discovery,
+        IReadOnlyList<PointerPath> foundPaths)
+    {
+        var existing = discovery.PointerPaths
+            .GroupBy(PointerPathResolver.GetIdentity, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var merged = new List<PointerPath>(foundPaths.Count);
+        foreach (var path in foundPaths)
+        {
+            var identity = PointerPathResolver.GetIdentity(path);
+            merged.Add(existing.TryGetValue(identity, out var previous)
+                ? previous
+                : path);
+        }
+
+        discovery.PointerPaths = merged;
+    }
+
+    private void ResolveSelectedDiscovery()
+    {
+        if (memory is null || SelectedDiscovery is null || SelectedProcess is null)
+        {
+            return;
+        }
+
+        var discovery = SelectedDiscovery.Discovery;
+        foreach (var path in discovery.PointerPaths
+                     .OrderBy(path => path.RootKind == PointerRootKind.MainModuleRelative ? 0 : 1)
+                     .ThenByDescending(path => path.Validations.Count(validation =>
+                         validation.Resolved))
+                     .ThenBy(path => path.Offsets.Count))
+        {
+            if (!TryResolvePointerPath(path, out var rootAddress, out var address))
+            {
+                continue;
+            }
+
+            var current = memory.TryRead(address, ValueCodec.SizeOf(discovery.ValueType));
+            if (current is null)
+            {
+                continue;
+            }
+
+            path.Validations.Add(new PointerPathValidation
+            {
+                AttachmentSessionId = attachmentSessionId,
+                ExecutableIdentity = SelectedProcess.ExecutableIdentity,
+                RootAddress = rootAddress,
+                ResolvedAddress = address,
+                Resolved = true
+            });
+            var candidate = new ScanCandidate(address, current);
+            scanSession = new ScanSession(discovery.ValueType, [candidate]);
+            PopulateCandidates();
+            SelectedCandidate = Candidates.Single();
+            discovery.LastKnownAddress = address;
+            discovery.LastKnownValue = SelectedCandidate.CurrentValue;
+            PopulateDiscoveries(discovery.Id);
+            OnPropertyChanged(nameof(HasScan));
+            OnPropertyChanged(nameof(ResultSummary));
+            Status = $"Resolved {discovery.Name} to 0x{address:X16} through a saved "
+                + $"{path.Offsets.Count}-level pointer path. Confirm the displayed value before recording restart evidence.";
+            return;
+        }
+
+        Status = $"None of the {discovery.PointerPaths.Count:N0} saved pointer paths resolved in this attachment.";
+    }
+
     private DiscoveryValidation CreateValidation(CandidateViewModel candidate, bool confirmed,
         bool addressResolvedAutomatically)
         => new()
@@ -504,12 +638,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         discovery.ModuleOffset = 0;
     }
 
-    private bool TryResolveAddress(SavedDiscovery discovery, out ulong address)
+    private bool CanAutomaticallyResolveAddress(
+        SavedDiscovery discovery,
+        ulong expectedAddress)
     {
-        address = discovery.LastKnownAddress;
+        foreach (var pointerPath in discovery.PointerPaths)
+        {
+            if (TryResolvePointerPath(pointerPath, out _, out var pointerAddress)
+                && pointerAddress == expectedAddress)
+            {
+                return true;
+            }
+        }
+
         if (discovery.AddressResolution == AddressResolutionKind.Absolute)
         {
-            return true;
+            return discovery.LastKnownAddress == expectedAddress;
         }
 
         if (SelectedProcess is null
@@ -519,7 +663,39 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return false;
         }
 
-        return SelectedProcess.TryResolveMainModuleOffset(discovery.ModuleOffset, out address);
+        return SelectedProcess.TryResolveMainModuleOffset(
+                discovery.ModuleOffset, out var moduleAddress)
+            && moduleAddress == expectedAddress;
+    }
+
+    private bool TryResolvePointerPath(
+        PointerPath path,
+        out ulong rootAddress,
+        out ulong address)
+    {
+        rootAddress = 0;
+        address = 0;
+        if (memory is null || SelectedProcess is null)
+        {
+            return false;
+        }
+
+        return PointerPathResolver.TryResolve(
+            path,
+            (moduleName, offset) =>
+            {
+                if (!string.Equals(moduleName, SelectedProcess.MainModuleName,
+                        StringComparison.OrdinalIgnoreCase)
+                    || !SelectedProcess.TryResolveMainModuleOffset(offset, out var moduleAddress))
+                {
+                    return null;
+                }
+
+                return moduleAddress;
+            },
+            memory.TryReadPointer,
+            out rootAddress,
+            out address);
     }
 
     private void PopulateDiscoveries(Guid? selectId = null)
@@ -607,6 +783,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         AddDiscoveryCommand.RaiseCanExecuteChanged();
         ValidateDiscoveryCommand.RaiseCanExecuteChanged();
         UpdateDiscoveryCommand.RaiseCanExecuteChanged();
+        FindPointerPathsCommand.RaiseCanExecuteChanged();
+        ResolveDiscoveryCommand.RaiseCanExecuteChanged();
         SaveProjectCommand.RaiseCanExecuteChanged();
         OpenProjectCommand.RaiseCanExecuteChanged();
         NewProjectCommand.RaiseCanExecuteChanged();

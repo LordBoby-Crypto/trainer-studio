@@ -9,13 +9,15 @@
 - [x] Direct value writing
 - [x] Project-document model
 - [x] Controlled test game
-- [ ] Build and hands-on verification on Windows 11
+- [x] Build and hands-on verification on Windows 11
 
 ## M2 — Durable discoveries
 
 - [x] Persistent project workflow in the UI
 - [x] Address labels and notes
-- Pointer-path scanner with restart validation
+- [x] Bounded x64 pointer-path scanner
+- [x] Saved-path resolution workflow
+- [ ] Hands-on restart validation on Windows 11
 - [x] Main-module-relative address support
 - [x] Repeated-session evidence and reliability rating
 
