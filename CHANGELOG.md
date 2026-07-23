@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.3-source — 2026-07-23
+
+- Made value-type and comparison selections readable by explicitly styling the
+  text WPF generates inside combo boxes.
+- Added distinct readable colors for normal, focused, hovered, selected, and
+  disabled combo-box states.
+
+## 0.2.2-source — 2026-07-23
+
+- Corrected the progress-bar binding so the UI only reads the view model's
+  privately-set scan progress instead of trying to write back to it.
+- Strengthened the Windows launch test to require successful workspace
+  initialization in the diagnostic log, preventing an initialization-error
+  dialog from being mistaken for a successful launch.
+
+## 0.2.1-source — 2026-07-22
+
+- Added startup and unhandled-exception diagnostics under the user's local app-data folder.
+- Replaced silent pre-window failures with an error message containing the diagnostic-log path.
+- Deferred initial process discovery until after the main window is visible.
+- Moved initial process discovery off the UI thread.
+- Added a Windows CI smoke test that launches both published executables and verifies that
+  neither exits during startup.
+
 ## 0.2.0-source — 2026-07-21
 
 - Added stable project and discovery IDs with migration from the 0.1 project format.

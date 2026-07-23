@@ -21,6 +21,9 @@ jobs:
       - name: Publish self-contained Windows test bundle
         shell: pwsh
         run: .\scripts\publish-windows-x64.ps1 -SkipBuildAndTest
+      - name: Smoke-test published Windows applications
+        shell: pwsh
+        run: .\scripts\smoke-test-windows.ps1
       - name: Upload Windows test bundle
         uses: actions/upload-artifact@v4
         with:

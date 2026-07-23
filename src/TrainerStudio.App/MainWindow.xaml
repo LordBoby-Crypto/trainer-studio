@@ -260,7 +260,7 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
-        <ProgressBar Grid.Column="1" Value="{Binding Progress}" Maximum="100" Height="5"
+        <ProgressBar Grid.Column="1" Value="{Binding Progress, Mode=OneWay}" Maximum="100" Height="5"
                      VerticalAlignment="Center" Margin="12,0" Foreground="{StaticResource Accent2Brush}" />
         <Button Grid.Column="2" Content="Cancel" Command="{Binding CancelCommand}"
                 Style="{StaticResource SecondaryButton}" Padding="10,5" />
