@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2-source — 2026-07-23
+
+- Corrected the progress-bar binding so the UI only reads the view model's
+  privately-set scan progress instead of trying to write back to it.
+- Strengthened the Windows launch test to require successful workspace
+  initialization in the diagnostic log, preventing an initialization-error
+  dialog from being mistaken for a successful launch.
+
 ## 0.2.1-source — 2026-07-22
 
 - Added startup and unhandled-exception diagnostics under the user's local app-data folder.
