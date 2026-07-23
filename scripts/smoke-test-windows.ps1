@@ -9,12 +9,17 @@ $root = Split-Path -Parent $PSScriptRoot
 $bundle = Join-Path $root $BundlePath
 $testGamePath = Join-Path $bundle 'TestGame\TrainerStudio.TestGame.exe'
 $trainerPath = Join-Path $bundle 'TrainerStudio\TrainerStudio.App.exe'
+$startupLogPath = Join-Path $env:LOCALAPPDATA 'Trainer Studio\Logs\startup.log'
 $processes = @()
 
 foreach ($path in @($testGamePath, $trainerPath)) {
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Published executable was not found: $path"
     }
+}
+
+if (Test-Path -LiteralPath $startupLogPath) {
+    Remove-Item -LiteralPath $startupLogPath -Force
 }
 
 try {
@@ -32,7 +37,20 @@ try {
         throw "Trainer Studio exited during startup with code $($trainer.ExitCode)."
     }
 
-    Write-Host 'Both Windows applications remained running after startup.' -ForegroundColor Green
+    if (-not (Test-Path -LiteralPath $startupLogPath)) {
+        throw "Trainer Studio remained running but did not create its startup log: $startupLogPath"
+    }
+
+    $startupLog = Get-Content -LiteralPath $startupLogPath -Raw
+    if ($startupLog -match 'Workspace initialization failed\.') {
+        throw "Trainer Studio remained running but workspace initialization failed.`n$startupLog"
+    }
+
+    if ($startupLog -notmatch 'Workspace initialization completed\.') {
+        throw "Trainer Studio remained running but did not complete workspace initialization.`n$startupLog"
+    }
+
+    Write-Host 'Both Windows applications launched and the Trainer Studio workspace initialized.' -ForegroundColor Green
 }
 finally {
     foreach ($process in $processes) {
