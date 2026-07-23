@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3-source — 2026-07-23
+
+- Made value-type and comparison selections readable by explicitly styling the
+  text WPF generates inside combo boxes.
+- Added distinct readable colors for normal, focused, hovered, selected, and
+  disabled combo-box states.
+
 ## 0.2.2-source — 2026-07-23
 
 - Corrected the progress-bar binding so the UI only reads the view model's
